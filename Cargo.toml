@@ -1,0 +1,9 @@
+[package]
+name = "time-shift"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+eframe = "0.31"
+egui = "0.31"
+rfd = "0.15"
