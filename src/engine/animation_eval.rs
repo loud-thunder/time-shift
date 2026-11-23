@@ -16,7 +16,6 @@ pub fn evaluate_element_state(
     time_sec: f32,
     grid_uv: (f32, f32),
     default_color: [u8; 4],
-    default_opacity: f32,
 ) -> EvaluatedElementState {
     let transform = evaluate_transform(&anims.transform, time_sec, grid_uv);
 
@@ -25,7 +24,6 @@ pub fn evaluate_element_state(
         time_sec,
         grid_uv,
         default_color,
-        default_opacity,
     );
 
     let morph_factor = evaluate_path_morph(&anims.path_morph, time_sec, grid_uv);
@@ -115,12 +113,11 @@ fn evaluate_color_opacity(
     time_sec: f32,
     grid_uv: (f32, f32),
     default_color: [u8; 4],
-    default_opacity: f32,
 ) -> ColorOpacityState {
     if !track.enabled || track.duration_sec <= 0.0 {
         return ColorOpacityState {
             color: default_color,
-            opacity: default_opacity,
+            opacity: 1.0,
         };
     }
 
@@ -135,7 +132,7 @@ fn evaluate_color_opacity(
 
     let default_val = ColorOpacityState {
         color: default_color,
-        opacity: default_opacity,
+        opacity: 1.0,
     };
     interpolate_stops(&track.stops, progress, default_val, ColorOpacityState::lerp)
 }

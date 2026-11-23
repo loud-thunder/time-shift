@@ -156,33 +156,71 @@ pub fn export_project_to_svg(project: &Project) -> String {
             let d_base = commands_to_svg_d(&prim.commands);
 
             // Styling colors
-            let fill_str = if let Some(ov) = &prim.style_override {
+            let (fill_str, fill_op_attr) = if let Some(ov) = &prim.style_override {
                 if let Some(fc) = ov.fill_color {
-                    format!("#{:02x}{:02x}{:02x}", fc[0], fc[1], fc[2])
+                    let op = if fc[3] < 255 {
+                        format!(r#" fill-opacity="{:.2}""#, fc[3] as f32 / 255.0)
+                    } else {
+                        String::new()
+                    };
+                    (format!("#{:02x}{:02x}{:02x}", fc[0], fc[1], fc[2]), op)
                 } else if layer.filled {
+                    let op = if layer.primary_color[3] < 255 {
+                        format!(
+                            r#" fill-opacity="{:.2}""#,
+                            layer.primary_color[3] as f32 / 255.0
+                        )
+                    } else {
+                        String::new()
+                    };
+                    (
+                        format!(
+                            "#{:02x}{:02x}{:02x}",
+                            layer.primary_color[0], layer.primary_color[1], layer.primary_color[2]
+                        ),
+                        op,
+                    )
+                } else {
+                    ("none".to_string(), String::new())
+                }
+            } else if layer.filled {
+                let op = if layer.primary_color[3] < 255 {
+                    format!(
+                        r#" fill-opacity="{:.2}""#,
+                        layer.primary_color[3] as f32 / 255.0
+                    )
+                } else {
+                    String::new()
+                };
+                (
                     format!(
                         "#{:02x}{:02x}{:02x}",
                         layer.primary_color[0], layer.primary_color[1], layer.primary_color[2]
-                    )
-                } else {
-                    "none".to_string()
-                }
-            } else if layer.filled {
-                format!(
-                    "#{:02x}{:02x}{:02x}",
-                    layer.primary_color[0], layer.primary_color[1], layer.primary_color[2]
+                    ),
+                    op,
                 )
             } else {
-                "none".to_string()
+                ("none".to_string(), String::new())
             };
 
-            let stroke_str = if layer.stroked {
-                format!(
-                    "#{:02x}{:02x}{:02x}",
-                    layer.secondary_color[0], layer.secondary_color[1], layer.secondary_color[2]
+            let (stroke_str, stroke_op_attr) = if layer.stroked {
+                let op = if layer.secondary_color[3] < 255 {
+                    format!(
+                        r#" stroke-opacity="{:.2}""#,
+                        layer.secondary_color[3] as f32 / 255.0
+                    )
+                } else {
+                    String::new()
+                };
+                (
+                    format!(
+                        "#{:02x}{:02x}{:02x}",
+                        layer.secondary_color[0], layer.secondary_color[1], layer.secondary_color[2]
+                    ),
+                    op,
                 )
             } else {
-                "none".to_string()
+                ("none".to_string(), String::new())
             };
 
             let stroke_w = if layer.stroked {
@@ -200,8 +238,8 @@ pub fn export_project_to_svg(project: &Project) -> String {
             };
 
             layer_primitives_svg.push(format!(
-                r#"    <path d="{}" fill="{}" stroke="{}"{}{}{}/>"#,
-                d_base, fill_str, stroke_str, stroke_w, class_attr, style_attr
+                r#"    <path d="{}" fill="{}" stroke="{}"{}{}{}{}{}/>"#,
+                d_base, fill_str, stroke_str, fill_op_attr, stroke_op_attr, stroke_w, class_attr, style_attr
             ));
 
             // Toroidal ghost copies for shapes straddling edges
@@ -213,8 +251,8 @@ pub fn export_project_to_svg(project: &Project) -> String {
                     .collect();
                 let ghost_d = commands_to_svg_d(&ghost_cmds);
                 layer_primitives_svg.push(format!(
-                    r#"    <path d="{}" fill="{}" stroke="{}"{}{}{}/>"#,
-                    ghost_d, fill_str, stroke_str, stroke_w, class_attr, style_attr
+                    r#"    <path d="{}" fill="{}" stroke="{}"{}{}{}{}{}/>"#,
+                    ghost_d, fill_str, stroke_str, fill_op_attr, stroke_op_attr, stroke_w, class_attr, style_attr
                 ));
             }
         }
@@ -295,9 +333,10 @@ fn generate_color_opacity_keyframes(name: &str, co: &ColorOpacityTrack) -> Strin
     for stop in &co.stops {
         let c = stop.value.color;
         let hex = format!("#{:02x}{:02x}{:02x}", c[0], c[1], c[2]);
+        let eff_opacity = stop.value.opacity * (c[3] as f32 / 255.0);
         stops_css.push(format!(
             "    {:.1}% {{ fill: {}; stroke: {}; opacity: {:.2}; }}",
-            stop.offset_pct, hex, hex, stop.value.opacity
+            stop.offset_pct, hex, hex, eff_opacity
         ));
     }
 

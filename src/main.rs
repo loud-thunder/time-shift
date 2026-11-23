@@ -80,4 +80,50 @@ mod tests {
             assert!(pal.background[2] >= 220, "Palette {} has non-light background B: {}", pal.name, pal.background[2]);
         }
     }
+
+    #[test]
+    fn test_element_state_opacity_default_is_one() {
+        use crate::engine::animation_eval::evaluate_element_state;
+        let mut layer = crate::model::project::PatternLayer::new_polka(1, "Test");
+        layer.opacity = 0.55;
+        // color_opacity is disabled by default
+        assert!(!layer.animations.color_opacity.enabled);
+
+        let elem_state = evaluate_element_state(
+            &layer.animations,
+            0.0,
+            (0.5, 0.5),
+            layer.primary_color,
+        );
+
+        // Element-level opacity multiplier must be 1.0, NOT layer.opacity (0.55)
+        assert_eq!(elem_state.color_opacity.opacity, 1.0);
+
+        // Canvas final alpha must be (color.a * elem_state.opacity * layer.opacity)
+        let layer_alpha = layer.opacity.clamp(0.0, 1.0);
+        let canvas_alpha = (elem_state.color_opacity.color[3] as f32
+            * elem_state.color_opacity.opacity
+            * layer_alpha) as u8;
+
+        // With color[3] = 255 and layer.opacity = 0.55:
+        // Expected alpha is 140 (approx 55%), NOT 77 (which was 0.55 * 0.55 = 30.25%)
+        assert_eq!(canvas_alpha, 140);
+    }
+
+    #[test]
+    fn test_svg_export_opacity_and_alpha_parity() {
+        let mut p = Project::default();
+        let l1 = p.layers.get_mut(0).unwrap();
+        l1.opacity = 0.55;
+        l1.primary_color = [14, 82, 196, 200]; // custom alpha < 255
+        p.layers.truncate(1); // Keep only layer 1
+
+        let svg = export_project_to_svg(&p);
+        // Verify layer group has opacity 0.55
+        assert!(svg.contains(r#"opacity="0.55""#));
+        // Verify fill has hex color
+        assert!(svg.contains(r##"fill="#0e52c4""##));
+        // Verify fill-opacity attribute is present for alpha < 255
+        assert!(svg.contains(r#"fill-opacity="0.78""#));
+    }
 }

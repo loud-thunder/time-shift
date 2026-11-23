@@ -92,7 +92,6 @@ pub fn render_canvas(
                         current_time,
                         prim.grid_uv,
                         layer.primary_color,
-                        layer.opacity,
                     );
 
                     let morphed_cmds = prim.get_commands_at_morph(elem_state.morph_factor);
@@ -141,7 +140,9 @@ pub fn render_canvas(
                                 layer.secondary_color[0],
                                 layer.secondary_color[1],
                                 layer.secondary_color[2],
-                                (layer.secondary_color[3] as f32 * layer_alpha) as u8,
+                                (layer.secondary_color[3] as f32
+                                    * elem_state.color_opacity.opacity
+                                    * layer_alpha) as u8,
                             )
                         } else {
                             Color32::TRANSPARENT
