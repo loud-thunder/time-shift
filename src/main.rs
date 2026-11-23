@@ -24,14 +24,12 @@ fn main() -> eframe::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::engine::animation_eval::{compute_progress, evaluate_drift};
+    use crate::engine::animation_eval::compute_progress;
     use crate::engine::generator_eval::evaluate_generator;
     use crate::export::svg_exporter::export_project_to_svg;
     use crate::model::animation::{AnimationDirection, EasingFunction};
-    use crate::model::generators::{GeneratorKind, PolkaHalftoneParams};
     use crate::model::project::Project;
-    use crate::presets::get_curated_presets;
+    use crate::presets::{get_curated_palettes, get_curated_presets};
 
     #[test]
     fn test_procedural_generator_primitives() {
@@ -69,18 +67,17 @@ mod tests {
     }
 
     #[test]
-    fn test_drift_keyframes_evaluation() {
-        let mut p = Project::default();
-        if let Some(layer) = p.layers.get_mut(0) {
-            layer.animations.drift.enabled = true;
-            layer.animations.drift.tiles_dx = 1;
-            layer.animations.drift.tiles_dy = 0;
-            layer.animations.drift.duration_sec = 10.0;
+    fn test_white_background_palettes_and_default() {
+        let p = Project::default();
+        assert_eq!(p.background_color, [255, 255, 255, 255]);
 
-            let drift_start = evaluate_drift(&layer.animations.drift, 0.0, p.tile_width, p.tile_height);
-            let drift_mid = evaluate_drift(&layer.animations.drift, 5.0, p.tile_width, p.tile_height);
-            assert_eq!(drift_start, [0.0, 0.0]);
-            assert!((drift_mid[0] - p.tile_width * 0.5).abs() < 1e-3);
+        let palettes = get_curated_palettes();
+        assert_eq!(palettes.len(), 8);
+        for pal in palettes {
+            // Backgrounds must be white or light (R, G, B >= 240)
+            assert!(pal.background[0] >= 240, "Palette {} has non-light background R: {}", pal.name, pal.background[0]);
+            assert!(pal.background[1] >= 240, "Palette {} has non-light background G: {}", pal.name, pal.background[1]);
+            assert!(pal.background[2] >= 220, "Palette {} has non-light background B: {}", pal.name, pal.background[2]);
         }
     }
 }

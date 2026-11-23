@@ -1,10 +1,8 @@
 use crate::model::animation::{
-    AnimationDirection, ColorOpacityState, EasingFunction, KeyframeStop, MorphState, TransformState,
+    AnimationDirection, ColorOpacityState, KeyframeStop, TransformState,
 };
 use crate::model::generators::{
-    ConcentricRipplesParams, FlowFieldDashesParams, GeneratorKind, IsometricHexGridParams,
-    MotifShape, PolkaHalftoneParams, TessellationMode, TruchetLayout, TruchetTilesParams,
-    TruchetVariant, WaveOrientation, WavesSineStripesParams,
+    GeneratorKind, MotifShape, TessellationMode, TruchetLayout,
 };
 use crate::model::project::{PatternLayer, Project};
 
@@ -20,60 +18,60 @@ pub struct ColorPalette {
 pub fn get_curated_palettes() -> Vec<ColorPalette> {
     vec![
         ColorPalette {
-            name: "Cyber Neon",
-            background: [13, 14, 26, 255],
-            primary: [0, 240, 255, 255],
-            secondary: [255, 0, 128, 255],
-            accent: [255, 230, 0, 255],
+            name: "Minimalist Ink",
+            background: [255, 255, 255, 255],
+            primary: [24, 24, 27, 255],
+            secondary: [100, 116, 139, 255],
+            accent: [225, 29, 72, 255],
         },
         ColorPalette {
-            name: "Synthwave Sunset",
-            background: [26, 11, 46, 255],
-            primary: [255, 110, 199, 255],
-            secondary: [255, 179, 71, 255],
-            accent: [113, 88, 226, 255],
+            name: "Nordic Clean",
+            background: [250, 250, 252, 255],
+            primary: [15, 23, 42, 255],
+            secondary: [71, 85, 105, 255],
+            accent: [14, 165, 233, 255],
         },
         ColorPalette {
-            name: "Deep Ocean",
-            background: [8, 20, 36, 255],
-            primary: [32, 201, 151, 255],
-            secondary: [13, 110, 253, 255],
-            accent: [111, 66, 193, 255],
+            name: "Bauhaus Studio",
+            background: [255, 255, 255, 255],
+            primary: [14, 82, 196, 255],
+            secondary: [220, 38, 38, 255],
+            accent: [245, 158, 11, 255],
         },
         ColorPalette {
-            name: "Forest Moss",
-            background: [18, 28, 22, 255],
-            primary: [74, 222, 128, 255],
-            secondary: [234, 179, 8, 255],
-            accent: [34, 197, 94, 255],
+            name: "Botanical Garden",
+            background: [253, 253, 248, 255],
+            primary: [20, 83, 45, 255],
+            secondary: [46, 125, 50, 255],
+            accent: [217, 119, 6, 255],
         },
         ColorPalette {
-            name: "Tokyo Midnight",
-            background: [20, 22, 38, 255],
-            primary: [168, 85, 247, 255],
-            secondary: [236, 72, 153, 255],
-            accent: [56, 189, 248, 255],
+            name: "Ocean Breeze",
+            background: [255, 255, 255, 255],
+            primary: [15, 44, 89, 255],
+            secondary: [13, 148, 136, 255],
+            accent: [244, 63, 94, 255],
         },
         ColorPalette {
-            name: "Warm Terracotta",
-            background: [36, 22, 20, 255],
-            primary: [251, 146, 60, 255],
-            secondary: [244, 63, 94, 255],
-            accent: [253, 224, 71, 255],
+            name: "Solarized Light",
+            background: [253, 246, 227, 255],
+            primary: [101, 123, 131, 255],
+            secondary: [38, 139, 210, 255],
+            accent: [211, 54, 130, 255],
         },
         ColorPalette {
-            name: "Monochrome Sleek",
-            background: [16, 16, 18, 255],
-            primary: [240, 240, 245, 255],
-            secondary: [140, 140, 150, 255],
-            accent: [80, 80, 90, 255],
+            name: "Architectural Drafting",
+            background: [255, 255, 255, 255],
+            primary: [2, 132, 199, 255],
+            secondary: [30, 41, 59, 255],
+            accent: [234, 88, 12, 255],
         },
         ColorPalette {
-            name: "Solar Gold",
-            background: [24, 20, 15, 255],
-            primary: [250, 204, 21, 255],
-            secondary: [249, 115, 22, 255],
-            accent: [239, 68, 68, 255],
+            name: "Warm Terracotta Light",
+            background: [255, 251, 247, 255],
+            primary: [154, 52, 18, 255],
+            secondary: [194, 65, 12, 255],
+            accent: [180, 83, 9, 255],
         },
     ]
 }
@@ -89,7 +87,7 @@ pub fn get_curated_presets() -> Vec<StarterPreset> {
     vec![
         StarterPreset {
             name: "Cyberpunk Isometric Matrix",
-            description: "Pulsing 3D isometric cubes paired with a drifting neon flow field",
+            description: "Pulsing 3D isometric cubes paired with animated flow field arrows",
             project_fn: preset_cyber_isometric,
         },
         StarterPreset {
@@ -104,7 +102,7 @@ pub fn get_curated_presets() -> Vec<StarterPreset> {
         },
         StarterPreset {
             name: "Bioluminescent Ripple Pond",
-            description: "Toroidal concentric ripples expanding over drifting spore points",
+            description: "Toroidal concentric ripples expanding over luminescent dot lattices",
             project_fn: preset_bioluminescent_ripples,
         },
         StarterPreset {
@@ -128,15 +126,15 @@ fn preset_cyber_isometric() -> Project {
         name: "Cyberpunk Isometric Matrix".to_string(),
         tile_width: 240.0,
         tile_height: 240.0,
-        background_color: [13, 14, 26, 255],
+        background_color: [255, 255, 255, 255],
         layers: Vec::new(),
         selected_layer_idx: 0,
         next_layer_id: 3,
     };
 
     let mut l1 = PatternLayer::new_isometric(1, "Isometric Cubes");
-    l1.primary_color = [0, 240, 255, 255];
-    l1.secondary_color = [255, 0, 128, 255];
+    l1.primary_color = [14, 82, 196, 255];
+    l1.secondary_color = [220, 38, 38, 255];
     l1.stroke_width = 1.5;
     l1.animations.transform.enabled = true;
     l1.animations.transform.duration_sec = 4.0;
@@ -157,20 +155,20 @@ fn preset_cyber_isometric() -> Project {
         },
     ];
 
-    let mut l2 = PatternLayer::new_flow_field(2, "Drifting Flow Arrows");
-    l2.primary_color = [255, 230, 0, 255];
-    l2.secondary_color = [255, 0, 128, 255];
+    let mut l2 = PatternLayer::new_flow_field(2, "Flow Field Arrows");
+    l2.primary_color = [15, 23, 42, 255];
+    l2.secondary_color = [2, 132, 199, 255];
     l2.stroke_width = 2.0;
-    l2.opacity = 0.7;
+    l2.opacity = 0.85;
     if let GeneratorKind::FlowFieldDashes(ref mut params) = l2.generator {
         params.arrow_heads = true;
         params.cols = 6;
         params.rows = 6;
     }
-    l2.animations.drift.enabled = true;
-    l2.animations.drift.duration_sec = 8.0;
-    l2.animations.drift.tiles_dx = 1;
-    l2.animations.drift.tiles_dy = 0;
+    l2.animations.transform.enabled = true;
+    l2.animations.transform.duration_sec = 4.0;
+    l2.animations.transform.phase_freq_x = 1;
+    l2.animations.transform.phase_freq_y = 1;
 
     p.layers.push(l1);
     p.layers.push(l2);
@@ -182,15 +180,15 @@ fn preset_synthwave_waves() -> Project {
         name: "Synthwave Ocean Ripples".to_string(),
         tile_width: 240.0,
         tile_height: 240.0,
-        background_color: [26, 11, 46, 255],
+        background_color: [254, 250, 255, 255],
         layers: Vec::new(),
         selected_layer_idx: 1,
         next_layer_id: 3,
     };
 
     let mut l1 = PatternLayer::new_polka(1, "Halftone Horizon");
-    l1.primary_color = [255, 179, 71, 160];
-    l1.secondary_color = [255, 110, 199, 160];
+    l1.primary_color = [219, 39, 119, 160];
+    l1.secondary_color = [147, 51, 234, 160];
     if let GeneratorKind::PolkaHalftone(ref mut params) = l1.generator {
         params.cols = 10;
         params.rows = 10;
@@ -202,8 +200,8 @@ fn preset_synthwave_waves() -> Project {
     l1.animations.color_opacity.direction = AnimationDirection::Alternate;
 
     let mut l2 = PatternLayer::new_waves(2, "Morphing Sine Ribbons");
-    l2.primary_color = [255, 110, 199, 255];
-    l2.secondary_color = [113, 88, 226, 255];
+    l2.primary_color = [79, 70, 229, 255];
+    l2.secondary_color = [225, 29, 72, 255];
     l2.stroke_width = 3.5;
     if let GeneratorKind::WavesSineStripes(ref mut params) = l2.generator {
         params.band_count = 8;
@@ -224,15 +222,15 @@ fn preset_kinetic_truchet() -> Project {
         name: "Kinetic Truchet Labyrinth".to_string(),
         tile_width: 240.0,
         tile_height: 240.0,
-        background_color: [16, 16, 22, 255],
+        background_color: [252, 252, 253, 255],
         layers: Vec::new(),
         selected_layer_idx: 0,
         next_layer_id: 3,
     };
 
     let mut l1 = PatternLayer::new_truchet(1, "Quarter Circles");
-    l1.primary_color = [50, 220, 160, 255];
-    l1.secondary_color = [20, 120, 200, 255];
+    l1.primary_color = [15, 118, 110, 255];
+    l1.secondary_color = [29, 78, 216, 255];
     l1.stroke_width = 5.0;
     if let GeneratorKind::TruchetTiles(ref mut params) = l1.generator {
         params.cols = 6;
@@ -245,21 +243,21 @@ fn preset_kinetic_truchet() -> Project {
     l1.animations.color_opacity.stops = vec![
         KeyframeStop {
             offset_pct: 0.0,
-            value: ColorOpacityState { color: [50, 220, 160, 255], opacity: 1.0 },
+            value: ColorOpacityState { color: [15, 118, 110, 255], opacity: 1.0 },
         },
         KeyframeStop {
             offset_pct: 50.0,
-            value: ColorOpacityState { color: [236, 72, 153, 255], opacity: 1.0 },
+            value: ColorOpacityState { color: [180, 83, 9, 255], opacity: 1.0 },
         },
         KeyframeStop {
             offset_pct: 100.0,
-            value: ColorOpacityState { color: [50, 220, 160, 255], opacity: 1.0 },
+            value: ColorOpacityState { color: [15, 118, 110, 255], opacity: 1.0 },
         },
     ];
 
     let mut l2 = PatternLayer::new_polka(2, "Cross Grid");
-    l2.primary_color = [240, 240, 245, 200];
-    l2.secondary_color = [100, 100, 120, 200];
+    l2.primary_color = [30, 41, 59, 220];
+    l2.secondary_color = [100, 116, 139, 220];
     l2.stroke_width = 1.0;
     if let GeneratorKind::PolkaHalftone(ref mut params) = l2.generator {
         params.cols = 6;
@@ -294,15 +292,15 @@ fn preset_bioluminescent_ripples() -> Project {
         name: "Bioluminescent Ripple Pond".to_string(),
         tile_width: 240.0,
         tile_height: 240.0,
-        background_color: [8, 20, 36, 255],
+        background_color: [253, 253, 248, 255],
         layers: Vec::new(),
         selected_layer_idx: 0,
         next_layer_id: 3,
     };
 
     let mut l1 = PatternLayer::new_ripples(1, "Toroidal Water Rings");
-    l1.primary_color = [0, 240, 255, 255];
-    l1.secondary_color = [32, 201, 151, 255];
+    l1.primary_color = [20, 83, 45, 255];
+    l1.secondary_color = [13, 148, 136, 255];
     l1.stroke_width = 2.5;
     if let GeneratorKind::ConcentricRipples(ref mut params) = l1.generator {
         params.center_count_x = 2;
@@ -314,19 +312,18 @@ fn preset_bioluminescent_ripples() -> Project {
     l1.animations.path_morph.duration_sec = 5.0;
     l1.animations.path_morph.direction = AnimationDirection::Alternate;
 
-    let mut l2 = PatternLayer::new_polka(2, "Drifting Luminescent Dots");
-    l2.primary_color = [111, 66, 193, 220];
-    l2.secondary_color = [0, 240, 255, 220];
+    let mut l2 = PatternLayer::new_polka(2, "Luminescent Dot Field");
+    l2.primary_color = [30, 64, 175, 200];
+    l2.secondary_color = [217, 119, 6, 200];
     if let GeneratorKind::PolkaHalftone(ref mut params) = l2.generator {
         params.cols = 12;
         params.rows = 12;
         params.shape = MotifShape::Circle;
         params.base_radius_ratio = 0.15;
     }
-    l2.animations.drift.enabled = true;
-    l2.animations.drift.duration_sec = 10.0;
-    l2.animations.drift.tiles_dx = 1;
-    l2.animations.drift.tiles_dy = 1;
+    l2.animations.color_opacity.enabled = true;
+    l2.animations.color_opacity.duration_sec = 4.0;
+    l2.animations.color_opacity.direction = AnimationDirection::Alternate;
 
     p.layers.push(l1);
     p.layers.push(l2);
@@ -338,15 +335,15 @@ fn preset_magnetic_flow() -> Project {
         name: "Magnetic Vector Field".to_string(),
         tile_width: 240.0,
         tile_height: 240.0,
-        background_color: [20, 22, 38, 255],
+        background_color: [255, 255, 255, 255],
         layers: Vec::new(),
         selected_layer_idx: 1,
         next_layer_id: 3,
     };
 
     let mut l1 = PatternLayer::new_isometric(1, "Hex Background Grid");
-    l1.primary_color = [56, 189, 248, 80];
-    l1.secondary_color = [168, 85, 247, 80];
+    l1.primary_color = [100, 116, 139, 100];
+    l1.secondary_color = [148, 163, 184, 100];
     l1.filled = false;
     l1.stroked = true;
     l1.stroke_width = 1.0;
@@ -357,8 +354,8 @@ fn preset_magnetic_flow() -> Project {
     }
 
     let mut l2 = PatternLayer::new_flow_field(2, "Oscillating Vector Dashes");
-    l2.primary_color = [236, 72, 153, 255];
-    l2.secondary_color = [168, 85, 247, 255];
+    l2.primary_color = [225, 29, 72, 255];
+    l2.secondary_color = [99, 102, 241, 255];
     l2.stroke_width = 3.0;
     if let GeneratorKind::FlowFieldDashes(ref mut params) = l2.generator {
         params.cols = 8;
@@ -393,15 +390,15 @@ fn preset_retro_halftone() -> Project {
         name: "Retro Halftone Spin".to_string(),
         tile_width: 240.0,
         tile_height: 240.0,
-        background_color: [24, 20, 15, 255],
+        background_color: [255, 251, 245, 255],
         layers: Vec::new(),
         selected_layer_idx: 0,
         next_layer_id: 2,
     };
 
     let mut l1 = PatternLayer::new_polka(1, "Staggered Stars");
-    l1.primary_color = [250, 204, 21, 255];
-    l1.secondary_color = [249, 115, 22, 255];
+    l1.primary_color = [194, 65, 12, 255];
+    l1.secondary_color = [217, 119, 6, 255];
     l1.filled = true;
     l1.stroked = true;
     l1.stroke_width = 1.5;

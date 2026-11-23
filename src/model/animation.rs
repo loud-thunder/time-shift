@@ -178,34 +178,6 @@ impl MorphState {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct DriftTrack {
-    pub enabled: bool,
-    pub duration_sec: f32,
-    pub easing: EasingFunction,
-    pub direction: AnimationDirection,
-    pub tiles_dx: i32, // integer multiple of tile width
-    pub tiles_dy: i32, // integer multiple of tile height
-    pub stops: Vec<KeyframeStop<(f32, f32)>>,
-}
-
-impl Default for DriftTrack {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            duration_sec: 10.0,
-            easing: EasingFunction::Linear,
-            direction: AnimationDirection::Normal,
-            tiles_dx: 1,
-            tiles_dy: 0,
-            stops: vec![
-                KeyframeStop { offset_pct: 0.0, value: (0.0, 0.0) },
-                KeyframeStop { offset_pct: 100.0, value: (1.0, 0.0) },
-            ],
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
 pub struct TransformTrack {
     pub enabled: bool,
     pub duration_sec: f32,
@@ -312,7 +284,6 @@ impl Default for PathMorphTrack {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct LayerAnimations {
-    pub drift: DriftTrack,
     pub transform: TransformTrack,
     pub color_opacity: ColorOpacityTrack,
     pub path_morph: PathMorphTrack,

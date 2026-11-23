@@ -36,25 +36,19 @@ pub fn render_animation_panel(
     }
 
     egui::ScrollArea::vertical().show(ui, |ui| {
-        // Track 1: Seamless Tile Pan / Drift
-        if let Some(layer) = project.layers.get_mut(selected_layer_idx) {
-            render_drift_track_ui(ui, &mut layer.animations.drift);
-        }
-        ui.separator();
-
-        // Track 2: Element Transform Pulse / Spin
+        // Track 1: Element Transform Pulse / Spin
         if let Some(layer) = project.layers.get_mut(selected_layer_idx) {
             render_transform_track_ui(ui, &mut layer.animations.transform);
         }
         ui.separator();
 
-        // Track 3: Color & Opacity Cycling
+        // Track 2: Color & Opacity Cycling
         if let Some(layer) = project.layers.get_mut(selected_layer_idx) {
             render_color_opacity_track_ui(ui, &mut layer.animations.color_opacity);
         }
         ui.separator();
 
-        // Track 4: Path Morphing (d attribute keyframes)
+        // Track 3: Path Morphing (d attribute keyframes)
         if let Some(layer) = project.layers.get_mut(selected_layer_idx) {
             render_path_morph_track_ui(ui, &mut layer.animations.path_morph);
         }
@@ -106,31 +100,6 @@ pub fn render_animation_panel(
                     );
                 });
         }
-    });
-}
-
-fn render_drift_track_ui(ui: &mut Ui, drift: &mut crate::model::animation::DriftTrack) {
-    ui.horizontal(|ui| {
-        ui.checkbox(&mut drift.enabled, "");
-        ui.strong("🌊 Seamless Tile Pan / Drift");
-    });
-
-    if !drift.enabled {
-        return;
-    }
-
-    ui.horizontal(|ui| {
-        ui.label("Duration (s):");
-        ui.add(DragValue::new(&mut drift.duration_sec).range(0.5..=60.0).speed(0.2));
-
-        easing_dropdown(ui, &mut drift.easing);
-        direction_dropdown(ui, &mut drift.direction);
-    });
-
-    ui.horizontal(|ui| {
-        ui.label("Tile Step dx / dy:");
-        ui.add(DragValue::new(&mut drift.tiles_dx).range(-4..=4));
-        ui.add(DragValue::new(&mut drift.tiles_dy).range(-4..=4));
     });
 }
 

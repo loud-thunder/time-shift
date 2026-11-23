@@ -1,5 +1,5 @@
 use crate::engine::animation_eval::{
-    evaluate_drift, evaluate_element_state, transform_commands,
+    evaluate_element_state, transform_commands,
 };
 use crate::engine::generator_eval::evaluate_generator;
 use crate::engine::primitives::PathCommand;
@@ -80,13 +80,6 @@ pub fn render_canvas(
             layer.secondary_color,
         );
 
-        let drift = evaluate_drift(
-            &layer.animations.drift,
-            current_time,
-            project.tile_width,
-            project.tile_height,
-        );
-
         let layer_alpha = layer.opacity.clamp(0.0, 1.0);
 
         for ty in 0..state.repeat_y {
@@ -98,8 +91,6 @@ pub fn render_canvas(
                         &layer.animations,
                         current_time,
                         prim.grid_uv,
-                        project.tile_width,
-                        project.tile_height,
                         layer.primary_color,
                         layer.opacity,
                     );
@@ -109,7 +100,6 @@ pub fn render_canvas(
                         &morphed_cmds,
                         prim.pivot,
                         &elem_state.transform,
-                        drift,
                     );
 
                     let draw_primitive = |cmds: &[PathCommand], painter: &Painter| {
@@ -187,8 +177,20 @@ pub fn render_canvas(
 
     // Draw tile boundary grid overlay
     if state.show_tile_grid {
-        let grid_stroke = Stroke::new(1.5, Color32::from_rgba_unmultiplied(255, 255, 255, 70));
-        let dashed_stroke = Stroke::new(1.0, Color32::from_rgba_unmultiplied(0, 240, 255, 120));
+        let is_light_bg = (0.299 * bg[0] as f32 + 0.587 * bg[1] as f32 + 0.114 * bg[2] as f32) > 140.0;
+        let (grid_color, internal_color) = if is_light_bg {
+            (
+                Color32::from_rgba_unmultiplied(30, 35, 45, 90),
+                Color32::from_rgba_unmultiplied(14, 82, 196, 90),
+            )
+        } else {
+            (
+                Color32::from_rgba_unmultiplied(255, 255, 255, 70),
+                Color32::from_rgba_unmultiplied(0, 240, 255, 120),
+            )
+        };
+        let grid_stroke = Stroke::new(1.5_f32, grid_color);
+        let dashed_stroke = Stroke::new(1.0_f32, internal_color);
 
         // Outer border
         clipped_painter.rect_stroke(canvas_bounds, 0.0, grid_stroke, egui::StrokeKind::Outside);

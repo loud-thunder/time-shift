@@ -1,50 +1,23 @@
-use super::primitives::{GeneratedPrimitive, PathCommand};
+use super::primitives::PathCommand;
 use crate::model::animation::{
-    AnimationDirection, ColorOpacityState, ColorOpacityTrack, DriftTrack, EasingFunction,
-    KeyframeStop, LayerAnimations, MorphState, PathMorphTrack, TransformState, TransformTrack,
+    AnimationDirection, ColorOpacityState, ColorOpacityTrack, EasingFunction, KeyframeStop,
+    LayerAnimations, MorphState, PathMorphTrack, TransformState, TransformTrack,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EvaluatedElementState {
-    pub drift_offset: [f32; 2],
     pub transform: TransformState,
     pub color_opacity: ColorOpacityState,
     pub morph_factor: f32,
-}
-
-pub fn evaluate_drift(track: &DriftTrack, time_sec: f32, tile_w: f32, tile_h: f32) -> [f32; 2] {
-    if !track.enabled || track.duration_sec <= 0.0 {
-        return [0.0, 0.0];
-    }
-
-    let progress = compute_progress(
-        time_sec,
-        track.duration_sec,
-        track.direction,
-        track.easing,
-    );
-
-    let (dx_norm, dy_norm) = interpolate_stops(&track.stops, progress, (0.0, 0.0), |a, b, t| {
-        (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t)
-    });
-
-    [
-        dx_norm * track.tiles_dx as f32 * tile_w,
-        dy_norm * track.tiles_dy as f32 * tile_h,
-    ]
 }
 
 pub fn evaluate_element_state(
     anims: &LayerAnimations,
     time_sec: f32,
     grid_uv: (f32, f32),
-    tile_w: f32,
-    tile_h: f32,
     default_color: [u8; 4],
     default_opacity: f32,
 ) -> EvaluatedElementState {
-    let drift_offset = evaluate_drift(&anims.drift, time_sec, tile_w, tile_h);
-
     let transform = evaluate_transform(&anims.transform, time_sec, grid_uv);
 
     let color_opacity = evaluate_color_opacity(
@@ -58,7 +31,6 @@ pub fn evaluate_element_state(
     let morph_factor = evaluate_path_morph(&anims.path_morph, time_sec, grid_uv);
 
     EvaluatedElementState {
-        drift_offset,
         transform,
         color_opacity,
         morph_factor,
@@ -69,7 +41,6 @@ pub fn transform_commands(
     cmds: &[PathCommand],
     pivot: [f32; 2],
     tf: &TransformState,
-    drift: [f32; 2],
 ) -> Vec<PathCommand> {
     let rad = tf.rotate_deg.to_radians();
     let cos_r = rad.cos();
@@ -92,8 +63,8 @@ pub fn transform_commands(
         let rx = x * cos_r - y * sin_r;
         let ry = x * sin_r + y * cos_r;
 
-        // 5. Restore pivot and apply drift
-        [rx + pivot[0] + drift[0], ry + pivot[1] + drift[1]]
+        // 5. Restore pivot
+        [rx + pivot[0], ry + pivot[1]]
     };
 
     cmds.iter()

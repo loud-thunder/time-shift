@@ -2,18 +2,17 @@ use crate::engine::animation_eval::compute_spatial_phase;
 use crate::engine::generator_eval::evaluate_generator;
 use crate::engine::primitives::{commands_to_svg_d, GeneratedPrimitive, PathCommand};
 use crate::model::animation::{
-    ColorOpacityTrack, DriftTrack, PathMorphTrack, TransformTrack,
+    ColorOpacityTrack, PathMorphTrack, TransformTrack,
 };
 use crate::model::project::Project;
-use std::collections::BTreeSet;
 
 pub fn export_project_to_svg(project: &Project) -> String {
     let w = project.tile_width;
     let h = project.tile_height;
 
-    let mut css_rules = Vec::new();
-    let mut defs_elements = Vec::new();
-    let mut body_elements = Vec::new();
+    let mut css_rules: Vec<String> = Vec::new();
+    let defs_elements: Vec<String> = Vec::new();
+    let mut body_elements: Vec<String> = Vec::new();
 
     // Background color
     let bg = project.background_color;
@@ -25,7 +24,7 @@ pub fn export_project_to_svg(project: &Project) -> String {
         w, h, bg_hex, bg_opacity
     ));
 
-    for (layer_idx, layer) in project.layers.iter().enumerate() {
+    for layer in &project.layers {
         if !layer.visible {
             continue;
         }
@@ -39,26 +38,7 @@ pub fn export_project_to_svg(project: &Project) -> String {
             layer.secondary_color,
         );
 
-        // 1. Generate Keyframes CSS for Drift Track
-        let drift = &layer.animations.drift;
-        let has_drift = drift.enabled && (drift.tiles_dx != 0 || drift.tiles_dy != 0);
-
-        if has_drift {
-            let drift_kf_name = format!("{}-drift", layer_css_id);
-            css_rules.push(generate_drift_keyframes(&drift_kf_name, drift, w, h));
-            css_rules.push(format!(
-                r#"  .{} {{
-    animation: {} {:.2}s {} infinite {};
-  }}"#,
-                drift_kf_name,
-                drift_kf_name,
-                drift.duration_sec,
-                drift.easing.css_value(),
-                drift.direction.name(),
-            ));
-        }
-
-        // 2. Generate Keyframes CSS for Transform Track
+        // 1. Generate Keyframes CSS for Transform Track
         let tf = &layer.animations.transform;
         let has_tf = tf.enabled;
         if has_tf {
@@ -99,9 +79,6 @@ pub fn export_project_to_svg(project: &Project) -> String {
         // 4. Generate Keyframes CSS for Path Morph Track
         let pm = &layer.animations.path_morph;
         let has_pm = pm.enabled;
-
-        // Collect spatial delay classes
-        let mut delays: BTreeSet<i32> = BTreeSet::new(); // store delay * 100 for quantization
 
         // Build SVG elements for primitives inside this layer
         let mut layer_primitives_svg = Vec::new();
@@ -242,47 +219,14 @@ pub fn export_project_to_svg(project: &Project) -> String {
             }
         }
 
-        // Layer grouping & Drift assembly
+        // Layer grouping
         let layer_content = layer_primitives_svg.join("\n");
-
-        if has_drift {
-            // Put the base layer in <defs> and tile a 3x3 grid inside the drifting group
-            let def_id = format!("{}-tile", layer_css_id);
-            defs_elements.push(format!(
-                r#"    <g id="{}">
-{}
-    </g>"#,
-                def_id, layer_content
-            ));
-
-            let mut use_grid = Vec::new();
-            for oy in -1..=1 {
-                for ox in -1..=1 {
-                    use_grid.push(format!(
-                        r##"      <use href="#{}" x="{:.2}" y="{:.2}"/>"##,
-                        def_id,
-                        ox as f32 * w,
-                        oy as f32 * h
-                    ));
-                }
-            }
-
-            body_elements.push(format!(
-                r#"  <g class="{}-drift" opacity="{:.2}">
+        body_elements.push(format!(
+            r#"  <g id="{}" opacity="{:.2}">
 {}
   </g>"#,
-                layer_css_id,
-                layer.opacity,
-                use_grid.join("\n")
-            ));
-        } else {
-            body_elements.push(format!(
-                r#"  <g id="{}" opacity="{:.2}">
-{}
-  </g>"#,
-                layer_css_id, layer.opacity, layer_content
-            ));
-        }
+            layer_css_id, layer.opacity, layer_content
+        ));
     }
 
     // Assemble final SVG
@@ -324,31 +268,6 @@ pub fn export_project_to_svg(project: &Project) -> String {
             format!("\n{}", defs_block)
         },
         body_elements.join("\n")
-    )
-}
-
-fn generate_drift_keyframes(
-    name: &str,
-    drift: &DriftTrack,
-    tile_w: f32,
-    tile_h: f32,
-) -> String {
-    let mut stops_css = Vec::new();
-    for stop in &drift.stops {
-        let x = stop.value.0 * drift.tiles_dx as f32 * tile_w;
-        let y = stop.value.1 * drift.tiles_dy as f32 * tile_h;
-        stops_css.push(format!(
-            "    {:.1}% {{ transform: translate({:.2}px, {:.2}px); }}",
-            stop.offset_pct, x, y
-        ));
-    }
-
-    format!(
-        r#"  @keyframes {} {{
-{}
-  }}"#,
-        name,
-        stops_css.join("\n")
     )
 }
 
