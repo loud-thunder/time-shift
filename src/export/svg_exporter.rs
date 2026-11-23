@@ -2,18 +2,17 @@ use crate::engine::animation_eval::compute_spatial_phase;
 use crate::engine::generator_eval::evaluate_generator;
 use crate::engine::primitives::{commands_to_svg_d, GeneratedPrimitive, PathCommand};
 use crate::model::animation::{
-    ColorOpacityTrack, DriftTrack, PathMorphTrack, TransformTrack,
+    ColorOpacityTrack, PathMorphTrack, TransformTrack,
 };
 use crate::model::project::Project;
-use std::collections::BTreeSet;
 
 pub fn export_project_to_svg(project: &Project) -> String {
     let w = project.tile_width;
     let h = project.tile_height;
 
-    let mut css_rules = Vec::new();
-    let mut defs_elements = Vec::new();
-    let mut body_elements = Vec::new();
+    let mut css_rules: Vec<String> = Vec::new();
+    let defs_elements: Vec<String> = Vec::new();
+    let mut body_elements: Vec<String> = Vec::new();
 
     // Background color
     let bg = project.background_color;
@@ -25,7 +24,7 @@ pub fn export_project_to_svg(project: &Project) -> String {
         w, h, bg_hex, bg_opacity
     ));
 
-    for (layer_idx, layer) in project.layers.iter().enumerate() {
+    for layer in &project.layers {
         if !layer.visible {
             continue;
         }
@@ -39,26 +38,7 @@ pub fn export_project_to_svg(project: &Project) -> String {
             layer.secondary_color,
         );
 
-        // 1. Generate Keyframes CSS for Drift Track
-        let drift = &layer.animations.drift;
-        let has_drift = drift.enabled && (drift.tiles_dx != 0 || drift.tiles_dy != 0);
-
-        if has_drift {
-            let drift_kf_name = format!("{}-drift", layer_css_id);
-            css_rules.push(generate_drift_keyframes(&drift_kf_name, drift, w, h));
-            css_rules.push(format!(
-                r#"  .{} {{
-    animation: {} {:.2}s {} infinite {};
-  }}"#,
-                drift_kf_name,
-                drift_kf_name,
-                drift.duration_sec,
-                drift.easing.css_value(),
-                drift.direction.name(),
-            ));
-        }
-
-        // 2. Generate Keyframes CSS for Transform Track
+        // 1. Generate Keyframes CSS for Transform Track
         let tf = &layer.animations.transform;
         let has_tf = tf.enabled;
         if has_tf {
@@ -99,9 +79,6 @@ pub fn export_project_to_svg(project: &Project) -> String {
         // 4. Generate Keyframes CSS for Path Morph Track
         let pm = &layer.animations.path_morph;
         let has_pm = pm.enabled;
-
-        // Collect spatial delay classes
-        let mut delays: BTreeSet<i32> = BTreeSet::new(); // store delay * 100 for quantization
 
         // Build SVG elements for primitives inside this layer
         let mut layer_primitives_svg = Vec::new();
@@ -179,33 +156,71 @@ pub fn export_project_to_svg(project: &Project) -> String {
             let d_base = commands_to_svg_d(&prim.commands);
 
             // Styling colors
-            let fill_str = if let Some(ov) = &prim.style_override {
+            let (fill_str, fill_op_attr) = if let Some(ov) = &prim.style_override {
                 if let Some(fc) = ov.fill_color {
-                    format!("#{:02x}{:02x}{:02x}", fc[0], fc[1], fc[2])
+                    let op = if fc[3] < 255 {
+                        format!(r#" fill-opacity="{:.2}""#, fc[3] as f32 / 255.0)
+                    } else {
+                        String::new()
+                    };
+                    (format!("#{:02x}{:02x}{:02x}", fc[0], fc[1], fc[2]), op)
                 } else if layer.filled {
+                    let op = if layer.primary_color[3] < 255 {
+                        format!(
+                            r#" fill-opacity="{:.2}""#,
+                            layer.primary_color[3] as f32 / 255.0
+                        )
+                    } else {
+                        String::new()
+                    };
+                    (
+                        format!(
+                            "#{:02x}{:02x}{:02x}",
+                            layer.primary_color[0], layer.primary_color[1], layer.primary_color[2]
+                        ),
+                        op,
+                    )
+                } else {
+                    ("none".to_string(), String::new())
+                }
+            } else if layer.filled {
+                let op = if layer.primary_color[3] < 255 {
+                    format!(
+                        r#" fill-opacity="{:.2}""#,
+                        layer.primary_color[3] as f32 / 255.0
+                    )
+                } else {
+                    String::new()
+                };
+                (
                     format!(
                         "#{:02x}{:02x}{:02x}",
                         layer.primary_color[0], layer.primary_color[1], layer.primary_color[2]
-                    )
-                } else {
-                    "none".to_string()
-                }
-            } else if layer.filled {
-                format!(
-                    "#{:02x}{:02x}{:02x}",
-                    layer.primary_color[0], layer.primary_color[1], layer.primary_color[2]
+                    ),
+                    op,
                 )
             } else {
-                "none".to_string()
+                ("none".to_string(), String::new())
             };
 
-            let stroke_str = if layer.stroked {
-                format!(
-                    "#{:02x}{:02x}{:02x}",
-                    layer.secondary_color[0], layer.secondary_color[1], layer.secondary_color[2]
+            let (stroke_str, stroke_op_attr) = if layer.stroked {
+                let op = if layer.secondary_color[3] < 255 {
+                    format!(
+                        r#" stroke-opacity="{:.2}""#,
+                        layer.secondary_color[3] as f32 / 255.0
+                    )
+                } else {
+                    String::new()
+                };
+                (
+                    format!(
+                        "#{:02x}{:02x}{:02x}",
+                        layer.secondary_color[0], layer.secondary_color[1], layer.secondary_color[2]
+                    ),
+                    op,
                 )
             } else {
-                "none".to_string()
+                ("none".to_string(), String::new())
             };
 
             let stroke_w = if layer.stroked {
@@ -223,8 +238,8 @@ pub fn export_project_to_svg(project: &Project) -> String {
             };
 
             layer_primitives_svg.push(format!(
-                r#"    <path d="{}" fill="{}" stroke="{}"{}{}{}/>"#,
-                d_base, fill_str, stroke_str, stroke_w, class_attr, style_attr
+                r#"    <path d="{}" fill="{}" stroke="{}"{}{}{}{}{}/>"#,
+                d_base, fill_str, stroke_str, fill_op_attr, stroke_op_attr, stroke_w, class_attr, style_attr
             ));
 
             // Toroidal ghost copies for shapes straddling edges
@@ -236,53 +251,20 @@ pub fn export_project_to_svg(project: &Project) -> String {
                     .collect();
                 let ghost_d = commands_to_svg_d(&ghost_cmds);
                 layer_primitives_svg.push(format!(
-                    r#"    <path d="{}" fill="{}" stroke="{}"{}{}{}/>"#,
-                    ghost_d, fill_str, stroke_str, stroke_w, class_attr, style_attr
+                    r#"    <path d="{}" fill="{}" stroke="{}"{}{}{}{}{}/>"#,
+                    ghost_d, fill_str, stroke_str, fill_op_attr, stroke_op_attr, stroke_w, class_attr, style_attr
                 ));
             }
         }
 
-        // Layer grouping & Drift assembly
+        // Layer grouping
         let layer_content = layer_primitives_svg.join("\n");
-
-        if has_drift {
-            // Put the base layer in <defs> and tile a 3x3 grid inside the drifting group
-            let def_id = format!("{}-tile", layer_css_id);
-            defs_elements.push(format!(
-                r#"    <g id="{}">
-{}
-    </g>"#,
-                def_id, layer_content
-            ));
-
-            let mut use_grid = Vec::new();
-            for oy in -1..=1 {
-                for ox in -1..=1 {
-                    use_grid.push(format!(
-                        r##"      <use href="#{}" x="{:.2}" y="{:.2}"/>"##,
-                        def_id,
-                        ox as f32 * w,
-                        oy as f32 * h
-                    ));
-                }
-            }
-
-            body_elements.push(format!(
-                r#"  <g class="{}-drift" opacity="{:.2}">
+        body_elements.push(format!(
+            r#"  <g id="{}" opacity="{:.2}">
 {}
   </g>"#,
-                layer_css_id,
-                layer.opacity,
-                use_grid.join("\n")
-            ));
-        } else {
-            body_elements.push(format!(
-                r#"  <g id="{}" opacity="{:.2}">
-{}
-  </g>"#,
-                layer_css_id, layer.opacity, layer_content
-            ));
-        }
+            layer_css_id, layer.opacity, layer_content
+        ));
     }
 
     // Assemble final SVG
@@ -327,31 +309,6 @@ pub fn export_project_to_svg(project: &Project) -> String {
     )
 }
 
-fn generate_drift_keyframes(
-    name: &str,
-    drift: &DriftTrack,
-    tile_w: f32,
-    tile_h: f32,
-) -> String {
-    let mut stops_css = Vec::new();
-    for stop in &drift.stops {
-        let x = stop.value.0 * drift.tiles_dx as f32 * tile_w;
-        let y = stop.value.1 * drift.tiles_dy as f32 * tile_h;
-        stops_css.push(format!(
-            "    {:.1}% {{ transform: translate({:.2}px, {:.2}px); }}",
-            stop.offset_pct, x, y
-        ));
-    }
-
-    format!(
-        r#"  @keyframes {} {{
-{}
-  }}"#,
-        name,
-        stops_css.join("\n")
-    )
-}
-
 fn generate_transform_keyframes(name: &str, tf: &TransformTrack) -> String {
     let mut stops_css = Vec::new();
     for stop in &tf.stops {
@@ -376,9 +333,10 @@ fn generate_color_opacity_keyframes(name: &str, co: &ColorOpacityTrack) -> Strin
     for stop in &co.stops {
         let c = stop.value.color;
         let hex = format!("#{:02x}{:02x}{:02x}", c[0], c[1], c[2]);
+        let eff_opacity = stop.value.opacity * (c[3] as f32 / 255.0);
         stops_css.push(format!(
             "    {:.1}% {{ fill: {}; stroke: {}; opacity: {:.2}; }}",
-            stop.offset_pct, hex, hex, stop.value.opacity
+            stop.offset_pct, hex, hex, eff_opacity
         ));
     }
 

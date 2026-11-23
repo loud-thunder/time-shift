@@ -1,5 +1,5 @@
 use crate::engine::animation_eval::{
-    evaluate_drift, evaluate_element_state, transform_commands,
+    evaluate_element_state, transform_commands,
 };
 use crate::engine::generator_eval::evaluate_generator;
 use crate::engine::primitives::PathCommand;
@@ -14,6 +14,22 @@ pub struct CanvasState {
     pub show_tile_grid: bool,
     pub zoom: f32,
     pub pan: Vec2,
+}
+
+/// Construct a `Color32` using standard sRGB premultiplication to match web browser / SVG compositing.
+#[inline]
+pub fn srgb_color32(r: u8, g: u8, b: u8, a: u8) -> Color32 {
+    if a == 0 {
+        Color32::TRANSPARENT
+    } else if a == 255 {
+        Color32::from_rgb(r, g, b)
+    } else {
+        let a_u32 = a as u32;
+        let pr = ((r as u32 * a_u32 + 127) / 255) as u8;
+        let pg = ((g as u32 * a_u32 + 127) / 255) as u8;
+        let pb = ((b as u32 * a_u32 + 127) / 255) as u8;
+        Color32::from_rgba_premultiplied(pr, pg, pb, a)
+    }
 }
 
 impl Default for CanvasState {
@@ -60,7 +76,7 @@ pub fn render_canvas(
 
     // Paint Canvas Background
     let bg = project.background_color;
-    let bg_color = Color32::from_rgba_unmultiplied(bg[0], bg[1], bg[2], bg[3]);
+    let bg_color = srgb_color32(bg[0], bg[1], bg[2], bg[3]);
     painter.rect_filled(canvas_bounds, 4.0, bg_color);
 
     // Clip rendering to canvas bounds
@@ -80,13 +96,6 @@ pub fn render_canvas(
             layer.secondary_color,
         );
 
-        let drift = evaluate_drift(
-            &layer.animations.drift,
-            current_time,
-            project.tile_width,
-            project.tile_height,
-        );
-
         let layer_alpha = layer.opacity.clamp(0.0, 1.0);
 
         for ty in 0..state.repeat_y {
@@ -98,10 +107,7 @@ pub fn render_canvas(
                         &layer.animations,
                         current_time,
                         prim.grid_uv,
-                        project.tile_width,
-                        project.tile_height,
                         layer.primary_color,
-                        layer.opacity,
                     );
 
                     let morphed_cmds = prim.get_commands_at_morph(elem_state.morph_factor);
@@ -109,20 +115,19 @@ pub fn render_canvas(
                         &morphed_cmds,
                         prim.pivot,
                         &elem_state.transform,
-                        drift,
                     );
 
                     let draw_primitive = |cmds: &[PathCommand], painter: &Painter| {
                         let fill_c = if let Some(ov) = &prim.style_override {
                             if let Some(fc) = ov.fill_color {
-                                Color32::from_rgba_unmultiplied(
+                                srgb_color32(
                                     fc[0],
                                     fc[1],
                                     fc[2],
                                     (fc[3] as f32 * layer_alpha) as u8,
                                 )
                             } else if layer.filled {
-                                Color32::from_rgba_unmultiplied(
+                                srgb_color32(
                                     elem_state.color_opacity.color[0],
                                     elem_state.color_opacity.color[1],
                                     elem_state.color_opacity.color[2],
@@ -134,7 +139,7 @@ pub fn render_canvas(
                                 Color32::TRANSPARENT
                             }
                         } else if layer.filled {
-                            Color32::from_rgba_unmultiplied(
+                            srgb_color32(
                                 elem_state.color_opacity.color[0],
                                 elem_state.color_opacity.color[1],
                                 elem_state.color_opacity.color[2],
@@ -147,11 +152,13 @@ pub fn render_canvas(
                         };
 
                         let stroke_c = if layer.stroked {
-                            Color32::from_rgba_unmultiplied(
+                            srgb_color32(
                                 layer.secondary_color[0],
                                 layer.secondary_color[1],
                                 layer.secondary_color[2],
-                                (layer.secondary_color[3] as f32 * layer_alpha) as u8,
+                                (layer.secondary_color[3] as f32
+                                    * elem_state.color_opacity.opacity
+                                    * layer_alpha) as u8,
                             )
                         } else {
                             Color32::TRANSPARENT
@@ -187,8 +194,20 @@ pub fn render_canvas(
 
     // Draw tile boundary grid overlay
     if state.show_tile_grid {
-        let grid_stroke = Stroke::new(1.5, Color32::from_rgba_unmultiplied(255, 255, 255, 70));
-        let dashed_stroke = Stroke::new(1.0, Color32::from_rgba_unmultiplied(0, 240, 255, 120));
+        let is_light_bg = (0.299 * bg[0] as f32 + 0.587 * bg[1] as f32 + 0.114 * bg[2] as f32) > 140.0;
+        let (grid_color, internal_color) = if is_light_bg {
+            (
+                srgb_color32(30, 35, 45, 90),
+                srgb_color32(14, 82, 196, 90),
+            )
+        } else {
+            (
+                srgb_color32(255, 255, 255, 70),
+                srgb_color32(0, 240, 255, 120),
+            )
+        };
+        let grid_stroke = Stroke::new(1.5_f32, grid_color);
+        let dashed_stroke = Stroke::new(1.0_f32, internal_color);
 
         // Outer border
         clipped_painter.rect_stroke(canvas_bounds, 0.0, grid_stroke, egui::StrokeKind::Outside);
