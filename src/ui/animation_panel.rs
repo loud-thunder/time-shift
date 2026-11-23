@@ -30,29 +30,38 @@ pub fn render_animation_panel(
     ui.add_space(4.0);
 
     let selected_layer_idx = project.selected_layer_idx;
-    if project.layers.get(selected_layer_idx).is_none() {
+    let selected_layer_id = project.layers.get(selected_layer_idx).map(|l| l.id);
+    let Some(layer_id) = selected_layer_id else {
         ui.label("Select a layer to configure animation tracks.");
         return;
-    }
+    };
 
     egui::ScrollArea::vertical().show(ui, |ui| {
-        // Track 1: Element Transform Pulse / Spin
-        if let Some(layer) = project.layers.get_mut(selected_layer_idx) {
-            render_transform_track_ui(ui, &mut layer.animations.transform);
-        }
-        ui.separator();
+        ui.push_id(("layer_anim", layer_id), |ui| {
+            // Track 1: Element Transform Pulse / Spin
+            if let Some(layer) = project.layers.get_mut(selected_layer_idx) {
+                ui.push_id("transform_track", |ui| {
+                    render_transform_track_ui(ui, &mut layer.animations.transform);
+                });
+            }
+            ui.separator();
 
-        // Track 2: Color & Opacity Cycling
-        if let Some(layer) = project.layers.get_mut(selected_layer_idx) {
-            render_color_opacity_track_ui(ui, &mut layer.animations.color_opacity);
-        }
-        ui.separator();
+            // Track 2: Color & Opacity Cycling
+            if let Some(layer) = project.layers.get_mut(selected_layer_idx) {
+                ui.push_id("color_opacity_track", |ui| {
+                    render_color_opacity_track_ui(ui, &mut layer.animations.color_opacity);
+                });
+            }
+            ui.separator();
 
-        // Track 3: Path Morphing (d attribute keyframes)
-        if let Some(layer) = project.layers.get_mut(selected_layer_idx) {
-            render_path_morph_track_ui(ui, &mut layer.animations.path_morph);
-        }
-        ui.separator();
+            // Track 3: Path Morphing (d attribute keyframes)
+            if let Some(layer) = project.layers.get_mut(selected_layer_idx) {
+                ui.push_id("path_morph_track", |ui| {
+                    render_path_morph_track_ui(ui, &mut layer.animations.path_morph);
+                });
+            }
+            ui.separator();
+        });
 
         // Live SVG code preview & Export options
         ui.heading("Export & Code Preview");
@@ -127,45 +136,47 @@ fn render_transform_track_ui(ui: &mut Ui, tf: &mut crate::model::animation::Tran
         ui.add(DragValue::new(&mut tf.phase_freq_y).range(0..=8));
     });
 
-    ui.collapsing("Keyframe Stops", |ui| {
-        let mut remove_idx = None;
-        let stops_count = tf.stops.len();
-        for (i, stop) in tf.stops.iter_mut().enumerate() {
-            ui.horizontal(|ui| {
-                ui.label(format!("{:.0}%", stop.offset_pct));
-                ui.label("Scale:");
-                ui.add(DragValue::new(&mut stop.value.scale_x).range(0.1..=4.0).speed(0.05));
-                ui.label("Rot:");
-                ui.add(DragValue::new(&mut stop.value.rotate_deg).range(-360.0..=360.0).speed(5.0));
+    egui::CollapsingHeader::new("Keyframe Stops")
+        .id_salt("transform_stops")
+        .show(ui, |ui| {
+            let mut remove_idx = None;
+            let stops_count = tf.stops.len();
+            for (i, stop) in tf.stops.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    ui.label(format!("{:.0}%", stop.offset_pct));
+                    ui.label("Scale:");
+                    ui.add(DragValue::new(&mut stop.value.scale_x).range(0.1..=4.0).speed(0.05));
+                    ui.label("Rot:");
+                    ui.add(DragValue::new(&mut stop.value.rotate_deg).range(-360.0..=360.0).speed(5.0));
 
-                if stops_count > 2 && ui.small_button("✖").clicked() {
-                    remove_idx = Some(i);
-                }
-            });
-        }
-        if let Some(idx) = remove_idx {
-            tf.stops.remove(idx);
-        }
-
-        ui.horizontal(|ui| {
-            if ui.button("➕ Add Stop").clicked() {
-                let last_pct = tf.stops.last().map(|s| s.offset_pct).unwrap_or(50.0);
-                tf.stops.push(KeyframeStop {
-                    offset_pct: (last_pct * 0.5).min(90.0),
-                    value: TransformState::default(),
+                    if stops_count > 2 && ui.small_button("✖").clicked() {
+                        remove_idx = Some(i);
+                    }
                 });
-                tf.stops.sort_by(|a, b| a.offset_pct.partial_cmp(&b.offset_pct).unwrap());
+            }
+            if let Some(idx) = remove_idx {
+                tf.stops.remove(idx);
             }
 
-            if ui.button("🔁 Loop Match (0% = 100%)").clicked() {
-                if let Some(first) = tf.stops.first().cloned() {
-                    if let Some(last) = tf.stops.last_mut() {
-                        last.value = first.value;
+            ui.horizontal(|ui| {
+                if ui.button("➕ Add Stop").clicked() {
+                    let last_pct = tf.stops.last().map(|s| s.offset_pct).unwrap_or(50.0);
+                    tf.stops.push(KeyframeStop {
+                        offset_pct: (last_pct * 0.5).min(90.0),
+                        value: TransformState::default(),
+                    });
+                    tf.stops.sort_by(|a, b| a.offset_pct.partial_cmp(&b.offset_pct).unwrap());
+                }
+
+                if ui.button("🔁 Loop Match (0% = 100%)").clicked() {
+                    if let Some(first) = tf.stops.first().cloned() {
+                        if let Some(last) = tf.stops.last_mut() {
+                            last.value = first.value;
+                        }
                     }
                 }
-            }
+            });
         });
-    });
 }
 
 fn render_color_opacity_track_ui(
@@ -195,7 +206,9 @@ fn render_color_opacity_track_ui(
         ui.add(DragValue::new(&mut co.phase_freq_y).range(0..=8));
     });
 
-    ui.collapsing("Keyframe Stops", |ui| {
+    egui::CollapsingHeader::new("Keyframe Stops")
+        .id_salt("color_opacity_stops")
+        .show(ui, |ui| {
         let mut remove_idx = None;
         let stops_count = co.stops.len();
         for (i, stop) in co.stops.iter_mut().enumerate() {
@@ -258,22 +271,24 @@ fn render_path_morph_track_ui(ui: &mut Ui, pm: &mut crate::model::animation::Pat
         ui.add(DragValue::new(&mut pm.phase_freq_y).range(0..=8));
     });
 
-    ui.collapsing("Keyframe Stops", |ui| {
-        for stop in pm.stops.iter_mut() {
-            ui.horizontal(|ui| {
-                ui.label(format!("{:.0}%", stop.offset_pct));
-                ui.add(Slider::new(&mut stop.value.morph_factor, -1.0..=1.0).text("Factor"));
-            });
-        }
+    egui::CollapsingHeader::new("Keyframe Stops")
+        .id_salt("path_morph_stops")
+        .show(ui, |ui| {
+            for stop in pm.stops.iter_mut() {
+                ui.horizontal(|ui| {
+                    ui.label(format!("{:.0}%", stop.offset_pct));
+                    ui.add(Slider::new(&mut stop.value.morph_factor, -1.0..=1.0).text("Factor"));
+                });
+            }
 
-        if ui.button("🔁 Loop Match (0% = 100%)").clicked() {
-            if let Some(first) = pm.stops.first().cloned() {
-                if let Some(last) = pm.stops.last_mut() {
-                    last.value = first.value;
+            if ui.button("🔁 Loop Match (0% = 100%)").clicked() {
+                if let Some(first) = pm.stops.first().cloned() {
+                    if let Some(last) = pm.stops.last_mut() {
+                        last.value = first.value;
+                    }
                 }
             }
-        }
-    });
+        });
 }
 
 fn easing_dropdown(ui: &mut Ui, easing: &mut EasingFunction) {
