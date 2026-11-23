@@ -16,6 +16,22 @@ pub struct CanvasState {
     pub pan: Vec2,
 }
 
+/// Construct a `Color32` using standard sRGB premultiplication to match web browser / SVG compositing.
+#[inline]
+pub fn srgb_color32(r: u8, g: u8, b: u8, a: u8) -> Color32 {
+    if a == 0 {
+        Color32::TRANSPARENT
+    } else if a == 255 {
+        Color32::from_rgb(r, g, b)
+    } else {
+        let a_u32 = a as u32;
+        let pr = ((r as u32 * a_u32 + 127) / 255) as u8;
+        let pg = ((g as u32 * a_u32 + 127) / 255) as u8;
+        let pb = ((b as u32 * a_u32 + 127) / 255) as u8;
+        Color32::from_rgba_premultiplied(pr, pg, pb, a)
+    }
+}
+
 impl Default for CanvasState {
     fn default() -> Self {
         Self {
@@ -60,7 +76,7 @@ pub fn render_canvas(
 
     // Paint Canvas Background
     let bg = project.background_color;
-    let bg_color = Color32::from_rgba_unmultiplied(bg[0], bg[1], bg[2], bg[3]);
+    let bg_color = srgb_color32(bg[0], bg[1], bg[2], bg[3]);
     painter.rect_filled(canvas_bounds, 4.0, bg_color);
 
     // Clip rendering to canvas bounds
@@ -104,14 +120,14 @@ pub fn render_canvas(
                     let draw_primitive = |cmds: &[PathCommand], painter: &Painter| {
                         let fill_c = if let Some(ov) = &prim.style_override {
                             if let Some(fc) = ov.fill_color {
-                                Color32::from_rgba_unmultiplied(
+                                srgb_color32(
                                     fc[0],
                                     fc[1],
                                     fc[2],
                                     (fc[3] as f32 * layer_alpha) as u8,
                                 )
                             } else if layer.filled {
-                                Color32::from_rgba_unmultiplied(
+                                srgb_color32(
                                     elem_state.color_opacity.color[0],
                                     elem_state.color_opacity.color[1],
                                     elem_state.color_opacity.color[2],
@@ -123,7 +139,7 @@ pub fn render_canvas(
                                 Color32::TRANSPARENT
                             }
                         } else if layer.filled {
-                            Color32::from_rgba_unmultiplied(
+                            srgb_color32(
                                 elem_state.color_opacity.color[0],
                                 elem_state.color_opacity.color[1],
                                 elem_state.color_opacity.color[2],
@@ -136,7 +152,7 @@ pub fn render_canvas(
                         };
 
                         let stroke_c = if layer.stroked {
-                            Color32::from_rgba_unmultiplied(
+                            srgb_color32(
                                 layer.secondary_color[0],
                                 layer.secondary_color[1],
                                 layer.secondary_color[2],
@@ -181,13 +197,13 @@ pub fn render_canvas(
         let is_light_bg = (0.299 * bg[0] as f32 + 0.587 * bg[1] as f32 + 0.114 * bg[2] as f32) > 140.0;
         let (grid_color, internal_color) = if is_light_bg {
             (
-                Color32::from_rgba_unmultiplied(30, 35, 45, 90),
-                Color32::from_rgba_unmultiplied(14, 82, 196, 90),
+                srgb_color32(30, 35, 45, 90),
+                srgb_color32(14, 82, 196, 90),
             )
         } else {
             (
-                Color32::from_rgba_unmultiplied(255, 255, 255, 70),
-                Color32::from_rgba_unmultiplied(0, 240, 255, 120),
+                srgb_color32(255, 255, 255, 70),
+                srgb_color32(0, 240, 255, 120),
             )
         };
         let grid_stroke = Stroke::new(1.5_f32, grid_color);

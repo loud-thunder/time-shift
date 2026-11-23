@@ -111,6 +111,53 @@ mod tests {
     }
 
     #[test]
+    fn test_srgb_color32_premultiplication_parity() {
+        use crate::ui::canvas::srgb_color32;
+
+        // Primary color `#0e52c4` (r=14, g=82, b=196) at opacity 0.10 (a=25)
+        let c_25 = srgb_color32(14, 82, 196, 25);
+        // Correct sRGB premultiplied values:
+        // pr = (14 * 25 + 127) / 255 = 1
+        // pg = (82 * 25 + 127) / 255 = 8
+        // pb = (196 * 25 + 127) / 255 = 19
+        assert_eq!(c_25.r(), 1);
+        assert_eq!(c_25.g(), 8);
+        assert_eq!(c_25.b(), 19);
+        assert_eq!(c_25.a(), 25);
+
+        // Verify theoretical composite over white (255) using GL_ONE, GL_ONE_MINUS_SRC_ALPHA:
+        // dst = premul + 255 * (1 - 25/255) = premul + 230
+        let r_comp = c_25.r() as u16 + 230;
+        let g_comp = c_25.g() as u16 + 230;
+        let b_comp = c_25.b() as u16 + 230;
+        assert_eq!(r_comp, 231);
+        assert_eq!(g_comp, 238);
+        assert_eq!(b_comp, 249);
+        // Blue channel is strictly greater than Green channel (preserves blue hue, no cyan distortion)
+        assert!(b_comp > g_comp);
+        assert_eq!(b_comp - g_comp, 11);
+
+        // Primary color `#0e52c4` at opacity 0.55 (a=140)
+        let c_140 = srgb_color32(14, 82, 196, 140);
+        // pr = (14 * 140 + 127) / 255 = 8
+        // pg = (82 * 140 + 127) / 255 = 45
+        // pb = (196 * 140 + 127) / 255 = 108
+        assert_eq!(c_140.r(), 8);
+        assert_eq!(c_140.g(), 45);
+        assert_eq!(c_140.b(), 108);
+        assert_eq!(c_140.a(), 140);
+
+        // Over white (dst = 255, 1 - 140/255 = 115):
+        let r_comp55 = c_140.r() as u16 + 115;
+        let g_comp55 = c_140.g() as u16 + 115;
+        let b_comp55 = c_140.b() as u16 + 115;
+        assert_eq!(r_comp55, 123);
+        assert_eq!(g_comp55, 160);
+        assert_eq!(b_comp55, 223);
+        assert!(b_comp55 > g_comp55);
+    }
+
+    #[test]
     fn test_svg_export_opacity_and_alpha_parity() {
         let mut p = Project::default();
         let l1 = p.layers.get_mut(0).unwrap();
